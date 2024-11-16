@@ -1,66 +1,79 @@
-# python/dashboard/app.py
-
 import streamlit as st
 import time
+from contextlib import closing
 from database import get_db_connection
 
-def reset_vote_counts():
-    connection = get_db_connection()
-    cursor = connection.cursor()
-    query = "TRUNCATE TABLE votes"
-    cursor.execute(query)
-    connection.commit()
-    cursor.close()
-    connection.close()
+def reset_scores():
+    with get_db_connection() as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("TRUNCATE TABLE votes")
+            connection.commit()
 
-def get_vote_counts():
-    connection = get_db_connection()
-    cursor = connection.cursor()
-    query = """
-        SELECT candidate_id, COUNT(*) as vote_count
-        FROM votes
-        GROUP BY candidate_id
-        ORDER BY vote_count DESC
-        LIMIT 5
-    """
-    cursor.execute(query)
-    results = cursor.fetchall()
-    cursor.close()
-    connection.close()
-    return results
+def get_total_score():
+    with get_db_connection() as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT COUNT(device_id) AS total_score FROM votes")
+            result = cursor.fetchone()
+    return result['total_score'] if result['total_score'] is not None else 0
+
+def save_results(name, total_score):
+    with get_db_connection() as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("REPLACE INTO vote_results (name, score) VALUES (%s, %s)", (name, total_score))
+            cursor.execute("REPLACE INTO judge_results (name, score) VALUES (%s, %s)", (name, 0))
+            connection.commit()
+
+def show_results_page(total_score):
+    for _ in range(3):
+        st.session_state.result_container.markdown(
+            f"<h1 style='font-size: 500px; text-align: center; color:red;'>{total_score}</h1>", 
+            unsafe_allow_html=True)
+        time.sleep(0.5)
+        st.session_state.result_container.markdown(
+            f"<h1 style='font-size: 500px; text-align: center;'>{total_score}</h1>", 
+            unsafe_allow_html=True)
+        time.sleep(0.5)
 
 def main():
-    st.title("실시간 투표 결과")
+    st.session_state.time_container = st.empty()
+    st.session_state.result_container = st.empty()
+    if 'page' not in st.session_state:
+        st.session_state.page = 'main'
+    
+    if st.session_state.page == 'main':
+        st.session_state.team_name = st.text_input("팀 이름", placeholder="")
+        if st.button("투표 시작"):
+            reset_scores()
+            st.session_state.page = 'voting'
+            st.session_state.start_time = time.time()
+            st.session_state.timer_duration = 5
 
-    if st.button("투표 시작"):
-        reset_vote_counts()
-        st.success("투표가 시작되었습니다.")
-        start_time = time.time()
-        timer_duration = 30  # 30초 타이머
-
+    if st.session_state.page == 'voting':
         while True:
-            elapsed_time = time.time() - start_time
-            remaining_time = max(0, timer_duration - int(elapsed_time))
+            time.sleep(0.1)
+            elapsed_time = time.time() - st.session_state.start_time
+            remaining_time = max(0, st.session_state.timer_duration - int(elapsed_time))
+            st.session_state.time_container.markdown(
+                f"<h1 style='font-size: 500px; text-align: center;'>{remaining_time}</h1>", 
+                unsafe_allow_html=True)
+            if remaining_time <= 0:
+                st.session_state.page = 'results'
+                break  # Loop를 break로 종료
+        st.rerun()  # 결과 페이지로 갱신
 
-            if remaining_time == 0:
-                st.warning("투표가 마감되었습니다.")
-                break
+    if st.session_state.page == 'results':
+        if 'show_results' not in st.session_state or st.session_state.show_results is False:
+            st.session_state.show_results = True
+            total_score = get_total_score()
+            show_results_page(total_score)
+            save_results(st.session_state.team_name, total_score)
 
-            st.write(f"투표 마감까지 남은 시간: {remaining_time}초")
-
-            vote_counts = get_vote_counts()
-            display_results(vote_counts)
-
-            time.sleep(1)  # 1초마다 업데이트
-
-    else:
-        vote_counts = get_vote_counts()
-        display_results(vote_counts)
-
-def display_results(vote_counts):
-    st.write("## 실시간 투표 순위")
-    for i, (candidate_id, vote_count) in enumerate(vote_counts, start=1):
-        st.write(f"{i}. 후보 {candidate_id}: {vote_count}표")
+        if st.button("홈으로"):
+            st.session_state.page = 'main'
+            st.session_state.show_results = False
+            st.session_state.time_container.empty()
+            st.session_state.result_container.empty()
+            st.rerun()
 
 if __name__ == "__main__":
     main()
