@@ -11,7 +11,7 @@ client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
 client.username_pw_set("jyyang", "didwhdduf")  # 실제 사용자 이름과 비밀번호로 변경
 
 # MQTT 브로커에 연결
-client.connect("15.164.231.31", 1883)  # 여기에 실제 브로커 주소 입력
+client.connect("3.36.29.2", 1883)  # 여기에 실제 브로커 주소 입력
 
 # 콜백 함수 설정
 client.on_publish = on_publish

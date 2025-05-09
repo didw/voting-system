@@ -5,7 +5,7 @@
 #include "mqtt_handler.h"
 #include "display_manager.h"
 
-const char* mqttBrokerIp = "15.164.231.31";
+const char* mqttBrokerIp = "3.36.29.2";
 const int mqttBrokerPort = 1883;
 const char* mqttTopic = "voting/device";
 
