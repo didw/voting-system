@@ -46,7 +46,7 @@ def main():
             reset_scores()
             st.session_state.page = 'voting'
             st.session_state.start_time = time.time()
-            st.session_state.timer_duration = 5
+            st.session_state.timer_duration = 10
 
     if st.session_state.page == 'voting':
         while True:
