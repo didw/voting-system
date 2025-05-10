@@ -17,14 +17,19 @@ const int buttonOkPin = D4;
 
 WifiHandler wifiHandler;
 MqttHandler mqttHandler(mqttBrokerIp, mqttBrokerPort);
-DisplayManager displayManager(128, 64);
+DisplayManager displayManager(128, 64); // OLED 디스플레이 너비 및 높이
 
+// 후보자 데이터는 투표 로직을 위해 유지되지만, 선택을 위해 표시되지는 않음
 const int numCandidates = 12;
 const char* candidates[numCandidates] = {"Candidate 1", "Candidate 2", "Candidate 3", "Candidate 4",
                                           "Candidate 5", "Candidate 6", "Candidate 7", "Candidate 8",
                                           "Candidate 9", "Candidate 10", "Candidate 11", "Candidate 12"};
 
-int selectedCandidateIndex = 0;
+int selectedCandidateIndex = 0; // 선택 기능이 제거되었으므로 기본적으로 첫 번째 후보에게 투표
+
+// OK 버튼 디바운스 변수
+unsigned long lastOkButtonPressTime = 0;
+unsigned long debounceDelay = 200; // 200ms 디바운스 지연 시간 (필요시 조절)
 
 void setup() {
     Serial.begin(115200);
@@ -36,82 +41,53 @@ void setup() {
     pinMode(buttonRightPin, INPUT_PULLUP);
     pinMode(buttonOkPin, INPUT_PULLUP);
 
+    // 디스플레이 기본 설정 먼저 수행 (showLoadingScreen 전에 필요)
+    Serial.println("Setting up display for loading screen...");
+    displayManager.setup();
+    displayManager.showLoadingScreen(); // "Loading..." 메시지 표시
+
     Serial.println("Setting up WiFi...");
     wifiHandler.setup();
 
     Serial.println("Setting up MQTT...");
     mqttHandler.setup();
 
-    Serial.println("Setting up display...");
-    displayManager.setup();
-    
-    Serial.println("Displaying loading screen...");
-    displayManager.showLoadingScreen();
-    delay(2000);
-    
+    // MAC 주소 발행은 MQTT 연결 후에 수행
     Serial.println("Publishing MAC address to MQTT...");
-    mqttHandler.publish(mqttTopic, WiFi.macAddress().c_str());
-    
-    Serial.println("Showing candidate list...");
-    displayManager.showCandidateList(candidates, numCandidates, selectedCandidateIndex);
+    String macMessage = "mac:" + WiFi.macAddress();
+    mqttHandler.publish(mqttTopic, macMessage.c_str());
+
+    Serial.println("Device setup complete. Showing Done message...");
+    displayManager.showDoneMessage(); // "Done" 메시지 표시
+    delay(1000); // 1초 동안 "Done" 메시지 유지
+
+    Serial.println("Entering IDLE screen.");
+    displayManager.clearScreen(); // 화면을 비워 IDLE 상태로 전환
 }
 
 void loop() {
     mqttHandler.loop();
-    
-    
-    if (buttonUpPressed()) {
-        selectedCandidateIndex = (selectedCandidateIndex - 4 + numCandidates) % numCandidates;
-        Serial.print("Moving selection up. New selection: ");
-        Serial.println(selectedCandidateIndex);
-        displayManager.showCandidateList(candidates, numCandidates, selectedCandidateIndex);
-    }
-    
-    if (buttonDownPressed()) {
-        selectedCandidateIndex = (selectedCandidateIndex + 4) % numCandidates;
-        Serial.print("Moving selection down. New selection: ");
-        Serial.println(selectedCandidateIndex);
-        displayManager.showCandidateList(candidates, numCandidates, selectedCandidateIndex);
-    }
-    
-    if (buttonLeftPressed()) {
-        selectedCandidateIndex = (selectedCandidateIndex - 1 + numCandidates) % numCandidates;
-        Serial.print("Moving selection left. New selection: ");
-        Serial.println(selectedCandidateIndex);
-        displayManager.showCandidateList(candidates, numCandidates, selectedCandidateIndex);
-    }
-    
-    if (buttonRightPressed()) {
-        selectedCandidateIndex = (selectedCandidateIndex + 1) % numCandidates;
-        Serial.print("Moving selection right. New selection: ");
-        Serial.println(selectedCandidateIndex);
-        displayManager.showCandidateList(candidates, numCandidates, selectedCandidateIndex);
-    }
-    
-    if (buttonOkPressed()) {
-        String message = "vote:" + String(selectedCandidateIndex);
-        Serial.print("Voting for candidate ");
-        Serial.println(selectedCandidateIndex);
-        mqttHandler.publish(mqttTopic, message.c_str());
-    }
-}
 
-bool buttonUpPressed() {
-    return digitalRead(buttonUpPin) == LOW;
-}
+    if (digitalRead(buttonOkPin) == LOW) {
+        if ((millis() - lastOkButtonPressTime) > debounceDelay) {
+            lastOkButtonPressTime = millis();
 
-bool buttonDownPressed() {
-    return digitalRead(buttonDownPin) == LOW;
-}
+            Serial.print("OK button pressed. Voting for candidate index: ");
+            Serial.println(selectedCandidateIndex);
 
-bool buttonLeftPressed() {
-    return digitalRead(buttonLeftPin) == LOW;
-}
+            String voteMessage = "vote: " + String(selectedCandidateIndex) + ", mac:" + WiFi.macAddress();
+            mqttHandler.publish(mqttTopic, voteMessage.c_str());
+            Serial.println("Vote published to MQTT.");
 
-bool buttonRightPressed() {
-    return digitalRead(buttonRightPin) == LOW;
-}
+            Serial.println("Showing spinning effect...");
+            displayManager.showSpinningEffect(1000);
 
-bool buttonOkPressed() {
-    return digitalRead(buttonOkPin) == LOW;
+            Serial.println("Showing OK message...");
+            displayManager.showOKMessage();
+            delay(1000);
+
+            Serial.println("Clearing screen to IDLE.");
+            displayManager.clearScreen();
+        }
+    }
 }
