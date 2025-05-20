@@ -3,8 +3,8 @@
 
 #include <WiFiManager.h>
 
-const char* ssid = "Android7896";
-const char* password = "22222222";
+const char* ssid = "KOCO_2.4G";
+const char* password = "13771377";
 
 class WifiHandler {
 public:

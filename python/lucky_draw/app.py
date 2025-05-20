@@ -1,96 +1,251 @@
 import streamlit as st
-import random
 import time
+from contextlib import closing
+# Assuming database.py and get_db_connection are correctly set up
+# from database import get_db_connection
 
-# 세션 상태 초기화 함수
-def initialize_session_state():
-    if 'app_status' not in st.session_state:
-        st.session_state.app_status = 'INIT'
-    
-    if 'min_value' not in st.session_state:
-        st.session_state.min_value = 1
-    if 'max_value' not in st.session_state:
-        # 더 많은 숫자를 보여주기 위해 max_value를 늘림
-        st.session_state.max_value = 600 
-    
-    if 'drawn_numbers_history' not in st.session_state:
-        st.session_state.drawn_numbers_history = []
-        
-    if 'last_drawn_number' not in st.session_state:
-        st.session_state.last_drawn_number = None
-        
-    if 'current_animation_idx' not in st.session_state:
-        # 애니메이션 시작 인덱스 (display_sequence 기준)
-        st.session_state.current_animation_idx = 0
+# Placeholder for database connection if you don't have it running
+# To run this example standalone, uncomment the mock functions below
+# and comment out the `from database import get_db_connection`
+# ---- MOCK DATABASE FUNCTIONS (for standalone testing) ----
+import sqlite3
+import os
 
-# 번호 변경 애니메이션 및 최종 번호 선택 함수
-def run_lottery_animation(number_container, available_numbers):
-    if not available_numbers:
-        number_container.error("더 이상 추첨할 번호가 없습니다!")
-        return None
+DB_FILE = "temp_vote_app.db"
 
-    # 애니메이션 및 최종 번호 표시에 사용될 정렬된 번호 목록
-    display_sequence = sorted(list(available_numbers))
-    if not display_sequence: # 방어 코드
-        number_container.error("표시할 번호가 없습니다.")
-        return None
+def get_db_connection():
+    conn = sqlite3.connect(DB_FILE)
+    conn.row_factory = sqlite3.Row # Allows accessing columns by name
+    # Create tables if they don't exist
+    with closing(conn.cursor()) as cursor:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS votes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                device_id TEXT UNIQUE,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS vote_results (
+                name TEXT PRIMARY KEY,
+                score INTEGER
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS judge_results (
+                name TEXT PRIMARY KEY,
+                score INTEGER
+            )
+        """)
+        conn.commit()
+    return conn
 
-    # HTML 스타일 (폰트 크기 유지 또는 약간 조정)
-    html_style_animation = "text-align: center; font-size:300px; font-weight:bold; white-space: nowrap; padding: 20px;"
-    html_style_final = "text-align: center; font-size:350px; font-weight:bold; white-space: nowrap; padding: 20px;"
+def cleanup_db():
+    if os.path.exists(DB_FILE):
+        os.remove(DB_FILE)
+# ---- END MOCK DATABASE FUNCTIONS ----
 
-    # --- 1. 고속 변경 구간 (Fast Spin) ---
-    fast_spin_total_duration = random.uniform(2.0, 3.0) # 2~3초간 고속 회전
-    fast_spin_start_time = time.time()
-    fast_spin_elapsed_time = 0
-    
-    # 고속 스핀 시 현재 번호 (실제 available_numbers와 무관하게 빠르게 변하는 숫자)
-    # 시작은 min_value 또는 마지막 추첨 번호 근처에서. 여기서는 min_value로 시작.
-    current_fast_number = st.session_state.min_value
-    # 만약 마지막 번호에서 이어가고 싶다면:
-    # current_fast_number = st.session_state.last_drawn_number if st.session_state.last_drawn_number is not None else st.session_state.min_value
+def reset_scores():
+    with get_db_connection() as connection:
+        with closing(connection.cursor()) as cursor:
+            # For SQLite, to reset auto-increment, we drop and recreate or delete from sqlite_sequence
+            # TRUNCATE is not standard SQLite. DELETE FROM is fine for this app's purpose.
+            cursor.execute("DELETE FROM votes")
+            # If you need to reset auto-increment in SQLite:
+            # cursor.execute("DELETE FROM sqlite_sequence WHERE name='votes'")
+            connection.commit()
+
+def get_total_score():
+    with get_db_connection() as connection:
+        with closing(connection.cursor()) as cursor:
+            cursor.execute("SELECT COUNT(DISTINCT device_id) AS total_score FROM votes") # Assuming device_id identifies a voter
+            result = cursor.fetchone()
+    return result['total_score'] if result and result['total_score'] is not None else 0
+
+# Example function to simulate voting (not in original, but useful for testing)
+def add_vote(device_id):
+    try:
+        with get_db_connection() as connection:
+            with closing(connection.cursor()) as cursor:
+                cursor.execute("INSERT INTO votes (device_id) VALUES (?)", (device_id,))
+                connection.commit()
+        return True
+    except sqlite3.IntegrityError: # Handles duplicate device_id if it's UNIQUE
+        # print(f"Device {device_id} already voted.")
+        return False
 
 
-    while fast_spin_elapsed_time < fast_spin_total_duration:
-        # 숫자를 10씩 증가 (max_value를 넘어가면 min_value부터 다시 시작하도록 순환)
-        current_fast_number = (current_fast_number - st.session_state.min_value + 10) % \
-                              (st.session_state.max_value - st.session_state.min_value + 1) + \
-                              st.session_state.min_value
-        
-        number_container.markdown(f'<div style="{html_style_animation}">{current_fast_number}</div>', unsafe_allow_html=True)
-        time.sleep(0.025) # 매우 짧은 sleep으로 빠르게 변화하는 느낌 (0.02 ~ 0.035)
-        fast_spin_elapsed_time = time.time() - fast_spin_start_time
-    
-    # --- 2. 일반 순차 변경 및 최종 번호 결정 구간 (Normal Spin) ---
-    # 전체 애니메이션 시간에서 고속 스핀 시간을 제외한, 일반 스핀에 할당될 시간
-    # 예: (전체 5~8초 목표 - 고속스핀 2~3초) = 일반스핀 2.5~5초 필요
-    normal_spin_total_duration = random.uniform(2.5, 4.0) # 일반 스핀 시간
-    
-    # 일반 스핀 시작 시 사용할 display_sequence의 인덱스
-    current_display_idx = st.session_state.current_animation_idx % len(display_sequence)
-    normal_spin_start_time = time.time()
-    normal_spin_elapsed_time = 0
-    
-    while normal_spin_elapsed_time < normal_spin_total_duration:
-        num_to_display = display_sequence[current_display_idx]
-        number_container.markdown(f'<div style="{html_style_animation}">{num_to_display}</div>', unsafe_allow_html=True)
-        
-        remaining_time = normal_spin_total_duration - normal_spin_elapsed_time
-        
-        # 시간에 따라 sleep 간격 조절 (점점 느려지게)
-        if remaining_time < 0.8:  # 마지막 0.8초
-            sleep_duration = 0.28
-        elif remaining_time < 1.8: # 그 전 1초
-            sleep_duration = 0.15
-        elif remaining_time < 2.8: # 그 전 1초
-            sleep_duration = 0.08
-        else:  # 초기 (비교적 빠르게, fast spin 보다는 느림)
-            sleep_duration = 0.05
+def save_results(name, total_score):
+    with get_db_connection() as connection:
+        with closing(connection.cursor()) as cursor:
+            # For SQLite, REPLACE works as an "upsert"
+            cursor.execute("REPLACE INTO vote_results (name, score) VALUES (?, ?)", (name, total_score))
+            cursor.execute("REPLACE INTO judge_results (name, score) VALUES (?, ?)", (name, 0)) # Assuming judge score is 0 for now
+            connection.commit()
+
+# --- UI Enhancements ---
+def apply_custom_css():
+    st.markdown("""
+        <style>
+            /* General page styling */
+            .stApp {
+                /* background-color: #f0f2f6; /* Light gray background */
+            }
+
+            /* Centering content */
+            .main-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+            }
+
+            /* Styling for timer and result numbers */
+            .metric-display {
+                font-size: 200px; /* Large, but not excessively so */
+                font-weight: bold;
+                text-align: center;
+                color: #2c3e50; /* Darker color for text */
+                margin: 20px 0;
+            }
+
+            .result-display {
+                font-size: 250px;
+                font-weight: bold;
+                text-align: center;
+                animation: pulse 1.5s infinite alternate;
+                margin: 20px 0;
+            }
             
-        time.sleep(sleep_duration)
-        
-        current_display_idx = (current_display_idx + 1) % len(display_sequence)
-        normal_spin_elapsed_time = time.time() - normal_spin_start_time
+            @keyframes pulse {
+                0% {
+                    transform: scale(1);
+                    color: #e74c3c; /* Reddish */
+                }
+                50% {
+                    transform: scale(1.1);
+                    color: #c0392b; /* Darker Red */
+                }
+                100% {
+                    transform: scale(1);
+                    color: #e74c3c; /* Reddish */
+                }
+            }
+
+            /* Input and Button Styling */
+            .stTextInput input {
+                border-radius: 5px;
+                padding: 10px;
+                border: 1px solid #bdc3c7; /* Light silver border */
+            }
+            .stButton button {
+                background-color: #3498db; /* Blue */
+                color: white;
+                padding: 10px 20px;
+                border-radius: 5px;
+                border: none;
+                font-size: 16px;
+                transition: background-color 0.3s ease;
+            }
+            .stButton button:hover {
+                background-color: #2980b9; /* Darker blue */
+            }
+            .stButton button:active {
+                background-color: #1f618d; /* Even darker blue */
+            }
+            .home-button button {
+                 background-color: #2ecc71; /* Green */
+            }
+            .home-button button:hover {
+                background-color: #27ae60; /* Darker green */
+            }
+
+        </style>
+    """, unsafe_allow_html=True)
+
+def show_results_page_enhanced(container, total_score):
+    container.markdown(
+        f"<div class='result-display'>{total_score}</div>",
+        unsafe_allow_html=True
+    )
+    # The CSS animation handles the visual effect, no need for Python loop and sleep
+
+def main():
+    apply_custom_css()
+
+    # Initialize session state variables if they don't exist
+    if 'page' not in st.session_state:
+        st.session_state.page = 'main'
+    if 'team_name' not in st.session_state:
+        st.session_state.team_name = ""
+    if 'start_time' not in st.session_state:
+        st.session_state.start_time = 0
+    if 'timer_duration' not in st.session_state:
+        st.session_state.timer_duration = 10 # Default timer duration
+    if 'show_results_processed' not in st.session_state:
+        st.session_state.show_results_processed = False
+
+    # Use a main container for better layout control
+    main_placeholder = st.empty()
+
+    if st.session_state.page == 'main':
+        with main_placeholder.container():
+            st.markdown("<div class='main-container'>", unsafe_allow_html=True)
+            st.title("🚀 투표 앱 🚀")
+            st.session_state.team_name = st.text_input(
+                "팀 이름을 입력하세요:",
+                value=st.session_state.team_name, # Preserve input on rerun
+                placeholder="예: 알파 팀"
+            )
+            st.session_state.timer_duration = st.number_input(
+                "투표 시간 (초):",
+                min_value=5,
+                max_value=300,
+                value=st.session_state.timer_duration, # Preserve value
+                step=5
+            )
+
+            if st.button("투표 시작 ✨", key="start_vote_button"):
+                if st.session_state.team_name.strip():
+                    reset_scores()
+                    st.session_state.page = 'voting'
+                    st.session_state.start_time = time.time()
+                    st.session_state.show_results_processed = False # Reset for next round
+                    st.rerun()
+                else:
+                    st.warning("팀 이름을 입력해주세요!")
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    elif st.session_state.page == 'voting':
+        with main_placeholder.container():
+            st.markdown("<div class='main-container'>", unsafe_allow_html=True)
+            st.header(f"{st.session_state.team_name} 팀 투표 중...")
+
+            elapsed_time = time.time() - st.session_state.start_time
+            remaining_time = max(0, st.session_state.timer_duration - int(elapsed_time))
+
+            st.markdown(
+                f"<div class='metric-display'>{remaining_time}</div>",
+                unsafe_allow_html=True
+            )
+            st.progress(remaining_time / st.session_state.timer_duration)
+            st.caption("실제 투표는 다른 장치/탭에서 진행됩니다. 이 화면은 카운트다운을 보여줍니다.")
+
+            # --- For testing: add some dummy votes ---
+            if remaining_time > 0 and remaining_time % 2 == 0: # Add a vote every 2s
+                 add_vote(f"device_{int(time.time())}") # Simulate unique device vote
+            # --- End test section ---
+
+            if remaining_time <= 0:
+                st.session_state.page = 'results'
+                st.rerun() # Go to results page
+            else:
+                # This makes Streamlit rerun the script roughly every second
+                # to update the timer.
+                time.sleep(1)
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # --- 3. 최종 번호 확정 및 깜빡임 ---
     # 일반 스핀 애니메이션 루프 직후, 화면에 마지막으로 보여졌던 번호가 최종 번호
@@ -184,5 +339,33 @@ def main():
                     del st.session_state[key]
                 st.rerun()
 
-if __name__ == '__main__':
+    elif st.session_state.page == 'results':
+        with main_placeholder.container():
+            st.markdown("<div class='main-container'>", unsafe_allow_html=True)
+            st.header(f"🏆 {st.session_state.team_name} 팀 투표 결과 🏆")
+
+            if not st.session_state.show_results_processed:
+                total_score = get_total_score()
+                save_results(st.session_state.team_name, total_score)
+                st.session_state.current_score_display = total_score # Store for display
+                st.session_state.show_results_processed = True # Mark as processed
+
+            # Display the score using the animated CSS
+            if 'current_score_display' in st.session_state:
+                show_results_page_enhanced(st.container(), st.session_state.current_score_display)
+            else:
+                st.error("결과를 표시할 수 없습니다.")
+
+
+            if st.button("🏠 처음으로 돌아가기", key="home_button", help="새로운 투표를 시작합니다."):
+                st.session_state.page = 'main'
+                # Optionally reset team name or keep it for convenience
+                # st.session_state.team_name = ""
+                st.session_state.show_results_processed = False
+                st.rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+if __name__ == "__main__":
+    # Ensure DB is clean if using mock for testing, before starting the app
+    # cleanup_db() # Call this if you want a fresh DB every time for the mock
     main()
