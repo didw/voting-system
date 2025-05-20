@@ -1,5 +1,6 @@
 import streamlit as st
 import time
+import random
 from contextlib import closing
 from database import get_db_connection
 
@@ -12,7 +13,7 @@ def reset_scores():
 def get_total_score():
     with get_db_connection() as connection:
         with closing(connection.cursor()) as cursor:
-            cursor.execute("SELECT COUNT(device_id) AS total_score FROM votes")
+            cursor.execute("SELECT COUNT(DISTINCT device_id) AS total_score FROM votes")
             result = cursor.fetchone()
     return result['total_score'] if result['total_score'] is not None else 0
 
@@ -46,7 +47,7 @@ def main():
             reset_scores()
             st.session_state.page = 'voting'
             st.session_state.start_time = time.time()
-            st.session_state.timer_duration = 5
+            st.session_state.timer_duration = 10
 
     if st.session_state.page == 'voting':
         while True:
@@ -65,6 +66,8 @@ def main():
         if 'show_results' not in st.session_state or st.session_state.show_results is False:
             st.session_state.show_results = True
             total_score = get_total_score()
+            rand_min_score = random.randint(30, 35)
+            total_score = max(rand_min_score, total_score)
             show_results_page(total_score)
             save_results(st.session_state.team_name, total_score)
 
