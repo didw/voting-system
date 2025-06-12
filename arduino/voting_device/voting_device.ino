@@ -5,8 +5,8 @@
 #include "mqtt_handler.h"
 #include "display_manager.h"
 
-const char* mqttBrokerIp = "3.36.29.2";
-const int mqttBrokerPort = 1883;
+const char* mqttBrokerIp = "koco1377.iptime.org";
+const int mqttBrokerPort = 11883;  # 기본포트는 1833 이지만 포트포워드로 11883으로 변경함
 const char* mqttTopic = "voting/device";
 
 const int buttonUpPin = D7;

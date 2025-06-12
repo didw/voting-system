@@ -44,10 +44,12 @@ def is_device_registered(mac_address):
     return result is not None
 
 def clear_devices():
-    # 디바이스 테이블 초기화
-    connection = get_db_connection()
-    with connection.cursor() as cursor:
-        query = "TRUNCATE TABLE devices"
-        cursor.execute(query)
-        connection.commit()
-    connection.close()
+    conn = get_db_connection()
+    with conn.cursor() as cursor:
+        # 외래 키 제약 조건 위반을 피하기 위해 참조하는 테이블(votes)부터 삭제합니다.
+        cursor.execute("DELETE FROM votes")
+        # 참조가 모두 사라진 후 원본 테이블(devices)을 삭제합니다.
+        cursor.execute("DELETE FROM devices")
+        print("테이블 초기화: 'votes'와 'devices' 테이블의 모든 데이터가 삭제되었습니다.")
+    conn.commit()
+    conn.close()
