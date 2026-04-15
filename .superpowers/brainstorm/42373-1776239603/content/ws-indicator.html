@@ -1,0 +1,61 @@
+<h2>WebSocket 연결 상태 표시 위치</h2>
+<p class="subtitle">WS가 끊기면 실시간 투표 카운트가 멈춥니다. 어디에 표시할까요?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>글로벌 헤더 (모든 페이지)</h3>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Navigation Bar</div>
+        <div class="mockup-body" style="padding:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-weight:bold;color:var(--accent)">VoteSystem</span>
+            <span style="display:flex;align-items:center;gap:6px;font-size:12px;padding:4px 10px;background:#22c55e20;border-radius:20px;color:#22c55e">
+              <span style="width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block"></span>
+              실시간 연결됨
+            </span>
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;font-size:13px;opacity:.75">어느 페이지에서든 상태 확인 가능. 끊기면 빨간색으로 전환. 글로벌 WS 관리 필요.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>투표 페이지에만 표시 + 배너</h3>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Voting Page</div>
+        <div class="mockup-body" style="padding:10px">
+          <div style="background:#ff3b3015;border:1px solid #ff3b3040;border-radius:6px;padding:8px 12px;font-size:12px;color:#ff3b30;margin-bottom:8px">
+            ⚠️ 실시간 연결이 끊겼습니다. 투표 수가 실시간으로 반영되지 않을 수 있습니다.
+          </div>
+          <div style="text-align:center;font-size:32px;font-weight:bold">현재 <span style="color:var(--accent)">12</span>표</div>
+        </div>
+      </div>
+      <p style="margin-top:8px;font-size:13px;opacity:.75">투표 중에만 중요한 정보. 다른 페이지에서는 WS 불필요. 구현 단순.</p>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>글로벌 헤더 + 페이지별 상세 배너</h3>
+      <div class="mockup" style="margin-top:10px">
+        <div class="mockup-header">Navigation (작은 dot만)</div>
+        <div class="mockup-body" style="padding:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <span style="font-weight:bold;color:var(--accent)">VoteSystem</span>
+            <span style="width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block" title="실시간 연결됨"></span>
+          </div>
+          <div style="background:#ff3b3015;border-radius:6px;padding:6px 10px;font-size:11px;color:#ff3b30">
+            투표 페이지: 연결 끊김 시 상세 경고 배너
+          </div>
+        </div>
+      </div>
+      <p style="margin-top:8px;font-size:13px;opacity:.75">헤더는 최소한의 dot 표시. 중요한 페이지(투표/기기)에서는 큰 배너 경고. 최적 UX.</p>
+    </div>
+  </div>
+</div>

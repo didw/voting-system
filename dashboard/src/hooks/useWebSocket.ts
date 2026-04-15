@@ -12,9 +12,10 @@ export function useWebSocket(handler: Handler) {
   handlerRef.current = handler;
 
   useEffect(() => {
-    const wsPort = process.env.NEXT_PUBLIC_WS_PORT ?? "8080";
-    const host = window.location.hostname;
-    const url = `ws://${host}:${wsPort}`;
+    // WS는 HTTP와 동일한 포트(3000)로 연결 — 서버에서 gateway(8080)로 프록시됨
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = window.location.host; // hostname:port 포함
+    const url = `${protocol}//${host}`;
 
     function connect() {
       const ws = new WebSocket(url);

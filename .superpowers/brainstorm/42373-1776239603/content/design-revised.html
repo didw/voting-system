@@ -1,0 +1,107 @@
+<h2>설계 수정본 — 2개 섹션</h2>
+<p class="subtitle">피드백 반영: 기기 목록 대용량 + 투표 화면 참가자용 레이아웃</p>
+
+<div class="section">
+  <span class="label">Devices 탭 — 50~100대 대응</span>
+  <div class="mockup" style="margin-top:12px">
+    <div class="mockup-header">Device Monitor — 87대 등록</div>
+    <div class="mockup-body" style="padding:12px">
+      <!-- Summary row -->
+      <div style="display:flex;gap:8px;margin-bottom:10px">
+        <span style="background:#22c55e20;color:#22c55e;border-radius:20px;padding:3px 12px;font-size:12px">🟢 온라인 42</span>
+        <span style="background:#ff990020;color:#ff9900;border-radius:20px;padding:3px 12px;font-size:12px">🟡 대기중 31</span>
+        <span style="background:#ff3b3020;color:#ff3b30;border-radius:20px;padding:3px 12px;font-size:12px">🔴 오프라인 14</span>
+        <span style="margin-left:auto;font-size:12px;opacity:.6;align-self:center">전체 87대</span>
+      </div>
+      <!-- Filter bar -->
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <input style="flex:1;border:1px solid var(--card-border);border-radius:6px;padding:4px 8px;font-size:12px;background:var(--background)" placeholder="MAC 주소 검색..."/>
+        <select style="border:1px solid var(--card-border);border-radius:6px;padding:4px 8px;font-size:12px;background:var(--background)">
+          <option>전체 상태</option>
+          <option>온라인</option>
+          <option>오프라인</option>
+        </select>
+      </div>
+      <!-- Compact table -->
+      <div style="max-height:200px;overflow-y:auto">
+        <table style="width:100%;font-size:11px;border-collapse:collapse">
+          <thead style="position:sticky;top:0;background:var(--card)">
+            <tr style="border-bottom:1px solid var(--card-border)">
+              <th style="padding:5px 6px;text-align:left;font-weight:500">#</th>
+              <th style="padding:5px 6px;text-align:left;font-weight:500">MAC 주소</th>
+              <th style="padding:5px 6px;text-align:left;font-weight:500">상태</th>
+              <th style="padding:5px 6px;text-align:left;font-weight:500">전원 켬</th>
+              <th style="padding:5px 6px;text-align:left;font-weight:500">마지막 투표</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid var(--card-border)">
+              <td style="padding:4px 6px;opacity:.5">1</td>
+              <td style="padding:4px 6px;font-family:monospace;font-size:10px">48:3F:DA:97:98:7F</td>
+              <td style="padding:4px 6px"><span style="background:#22c55e20;color:#22c55e;border-radius:10px;padding:1px 6px">🟢 온라인</span></td>
+              <td style="padding:4px 6px;opacity:.7">오늘 16:35</td>
+              <td style="padding:4px 6px;opacity:.7">3분 전</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--card-border)">
+              <td style="padding:4px 6px;opacity:.5">2</td>
+              <td style="padding:4px 6px;font-family:monospace;font-size:10px">A4:CF:12:88:01:22</td>
+              <td style="padding:4px 6px"><span style="background:#22c55e20;color:#22c55e;border-radius:10px;padding:1px 6px">🟢 온라인</span></td>
+              <td style="padding:4px 6px;opacity:.7">오늘 16:35</td>
+              <td style="padding:4px 6px;opacity:.7">8분 전</td>
+            </tr>
+            <tr style="border-bottom:1px solid var(--card-border)">
+              <td style="padding:4px 6px;opacity:.5">3</td>
+              <td style="padding:4px 6px;font-family:monospace;font-size:10px">B8:27:EB:00:11:FF</td>
+              <td style="padding:4px 6px"><span style="background:#ff990020;color:#ff9900;border-radius:10px;padding:1px 6px">🟡 대기중</span></td>
+              <td style="padding:4px 6px;opacity:.7">오늘 16:35</td>
+              <td style="padding:4px 6px;opacity:.7">투표 없음</td>
+            </tr>
+            <tr>
+              <td style="padding:4px 6px;opacity:.5">4</td>
+              <td style="padding:4px 6px;font-family:monospace;font-size:10px">C4:4F:33:88:22:AA</td>
+              <td style="padding:4px 6px"><span style="background:#ff3b3020;color:#ff3b30;border-radius:10px;padding:1px 6px">🔴 오프라인</span></td>
+              <td style="padding:4px 6px;opacity:.7">어제</td>
+              <td style="padding:4px 6px;opacity:.7">—</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;opacity:.5">스크롤로 전체 목록 확인 · 30초마다 자동 갱신</span>
+        <button style="background:#ff3b3010;border:1px solid #ff3b3030;color:#ff3b30;border-radius:5px;padding:4px 12px;font-size:11px">기기 목록 초기화</button>
+      </div>
+    </div>
+  </div>
+  <ul style="margin-top:8px;font-size:13px;opacity:.8;padding-left:20px">
+    <li>요약 pill을 상단에 한 줄로 배치 (카드 4개 → 컴팩트)</li>
+    <li>MAC 검색 + 상태 필터로 100대 중 원하는 기기 빠르게 찾기</li>
+    <li>테이블 행 높이를 줄여 스크롤 없이 최대한 많이 표시</li>
+    <li>스티키 헤더 → 스크롤해도 컬럼명 유지</li>
+  </ul>
+</div>
+
+<div class="section">
+  <span class="label">투표 탭 — 참가자 대형 화면용</span>
+  <div class="mockup" style="margin-top:12px">
+    <div class="mockup-header">Voting Page (프로젝터/대형 모니터 기준)</div>
+    <div class="mockup-body" style="padding:20px;text-align:center;min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;position:relative">
+      <!-- Small WS warning top-right -->
+      <div style="position:absolute;top:8px;right:8px;background:#ff3b3015;border:1px solid #ff3b3030;border-radius:4px;padding:3px 8px;font-size:10px;color:#ff3b30">
+        ⚠ 연결 끊김
+      </div>
+      <!-- Team name -->
+      <div style="font-size:18px;font-weight:600;opacity:.7;margin-bottom:4px">팀 A</div>
+      <!-- Timer -->
+      <div style="font-size:14px;opacity:.5;margin-bottom:24px">남은 시간 01:32</div>
+      <!-- Giant vote count -->
+      <div style="font-size:120px;font-weight:900;line-height:1;color:var(--accent);letter-spacing:-4px">47</div>
+      <div style="font-size:16px;opacity:.5;margin-top:8px">표</div>
+    </div>
+  </div>
+  <ul style="margin-top:8px;font-size:13px;opacity:.8;padding-left:20px">
+    <li>투표 수: 120px 초대형 폰트 → 멀리서도 보임</li>
+    <li>WS 경고: 우상단 소형 배지 (10px, 투명도 낮음)</li>
+    <li>팀명 + 타이머는 조용하게 위에 배치</li>
+    <li>결과 화면도 동일하게 대형 숫자 유지</li>
+  </ul>
+</div>

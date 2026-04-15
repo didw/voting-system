@@ -1,0 +1,153 @@
+<h2>전체 설계 — 섹션별 확인</h2>
+<p class="subtitle">B안 상용화 개선 전체 설계. 각 섹션을 확인 후 피드백 주세요.</p>
+
+<div class="section">
+  <span class="label">섹션 1 · DB 마이그레이션</span>
+  <div style="background:var(--card);border:1px solid var(--card-border);border-radius:8px;padding:16px;margin-top:12px">
+    <p style="margin:0 0 8px;font-size:14px"><strong>devices 테이블에 컬럼 1개 추가</strong></p>
+    <code style="display:block;background:#0001;border-radius:6px;padding:12px;font-size:13px;white-space:pre">ALTER TABLE devices
+  ADD COLUMN last_voted_at TIMESTAMP NULL
+  COMMENT '마지막 투표 버튼 누른 시각';</code>
+    <ul style="margin:10px 0 0;font-size:13px;opacity:.8;padding-left:20px">
+      <li><code>last_seen_at</code> → 전원을 켠 시각 (mac: 메시지 수신 시 갱신)</li>
+      <li><code>last_voted_at</code> → 투표 버튼을 누른 시각 (vote: 메시지 수신 시 갱신)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section">
+  <span class="label">섹션 2 · Devices 탭 리디자인</span>
+  <div class="mockup" style="margin-top:12px">
+    <div class="mockup-header">Device Monitor</div>
+    <div class="mockup-body" style="padding:16px">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:16px">
+        <div style="background:#22c55e15;border:1px solid #22c55e40;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:#22c55e">🟢 온라인</div>
+          <div style="font-size:24px;font-weight:bold">3</div>
+        </div>
+        <div style="background:#ff990015;border:1px solid #ff990040;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:#ff9900">🟡 대기중</div>
+          <div style="font-size:24px;font-weight:bold">2</div>
+        </div>
+        <div style="background:#ff3b3015;border:1px solid #ff3b3040;border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;color:#ff3b30">🔴 오프라인</div>
+          <div style="font-size:24px;font-weight:bold">1</div>
+        </div>
+        <div style="background:var(--card);border:1px solid var(--card-border);border-radius:8px;padding:10px;text-align:center">
+          <div style="font-size:11px;opacity:.6">전체 등록</div>
+          <div style="font-size:24px;font-weight:bold">6</div>
+        </div>
+      </div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse">
+        <thead>
+          <tr style="border-bottom:1px solid var(--card-border);opacity:.7">
+            <th style="padding:8px 6px;text-align:left">MAC 주소</th>
+            <th style="padding:8px 6px;text-align:left">상태</th>
+            <th style="padding:8px 6px;text-align:left">전원 켬</th>
+            <th style="padding:8px 6px;text-align:left">마지막 투표</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--card-border)">
+            <td style="padding:8px 6px;font-family:monospace">48:3F:DA:97:98:7F</td>
+            <td style="padding:8px 6px"><span style="background:#22c55e20;color:#22c55e;border-radius:12px;padding:2px 8px;font-size:11px">🟢 온라인</span></td>
+            <td style="padding:8px 6px;opacity:.7">오늘 16:35</td>
+            <td style="padding:8px 6px;opacity:.7">3분 전</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--card-border)">
+            <td style="padding:8px 6px;font-family:monospace">A4:CF:12:88:01:22</td>
+            <td style="padding:8px 6px"><span style="background:#ff990020;color:#ff9900;border-radius:12px;padding:2px 8px;font-size:11px">🟡 대기중</span></td>
+            <td style="padding:8px 6px;opacity:.7">오늘 16:35</td>
+            <td style="padding:8px 6px;opacity:.7">42분 전</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 6px;font-family:monospace">B8:27:EB:55:AA:11</td>
+            <td style="padding:8px 6px"><span style="background:#ff3b3020;color:#ff3b30;border-radius:12px;padding:2px 8px;font-size:11px">🔴 오프라인</span></td>
+            <td style="padding:8px 6px;opacity:.7">어제</td>
+            <td style="padding:8px 6px;opacity:.7">투표 없음</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end">
+        <button style="background:#ff3b3015;border:1px solid #ff3b3040;color:#ff3b30;border-radius:6px;padding:6px 16px;font-size:12px">기기 목록 초기화</button>
+      </div>
+    </div>
+  </div>
+  <ul style="margin-top:10px;font-size:13px;opacity:.8;padding-left:20px">
+    <li>🟢 온라인: 오늘 전원 켬 + 마지막 투표 30분 이내</li>
+    <li>🟡 대기중: 오늘 전원 켬, 투표 없음 또는 30분 초과</li>
+    <li>🔴 오프라인: 24시간 이상 신호 없음</li>
+    <li>기기 목록 초기화 버튼: <code>DELETE /api/devices</code> (세션 데이터와 분리)</li>
+  </ul>
+</div>
+
+<div class="section">
+  <span class="label">섹션 3 · 투표 탭 개선</span>
+  <div class="mockup" style="margin-top:12px">
+    <div class="mockup-header">Voting Page — 투표 진행 중</div>
+    <div class="mockup-body" style="padding:16px">
+      <div style="background:#ff3b3015;border:1px solid #ff3b3040;border-radius:6px;padding:8px 12px;font-size:12px;color:#ff3b30;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+        <span>⚠️</span> 실시간 연결이 끊어졌습니다. 투표 수가 지연될 수 있습니다.
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:20px;font-weight:600;margin-bottom:8px">팀 A</div>
+        <div style="font-size:64px;font-weight:bold;color:var(--accent)">23</div>
+        <div style="font-size:14px;opacity:.6">현재 투표 수</div>
+      </div>
+    </div>
+  </div>
+  <ul style="margin-top:10px;font-size:13px;opacity:.8;padding-left:20px">
+    <li>투표 시작 버튼 클릭 시 즉시 disabled → 중복 세션 방지</li>
+    <li>WS 끊김 시 빨간 배너 표시 (투표 페이지만)</li>
+    <li>WS 끊김 시 5초 간격 폴링으로 자동 폴백</li>
+    <li>페이지 이탈 감지 → 경고 dialog</li>
+  </ul>
+</div>
+
+<div class="section">
+  <span class="label">섹션 4 · 행운권 추첨 수정</span>
+  <div style="background:var(--card);border:1px solid var(--card-border);border-radius:8px;padding:14px;margin-top:12px;font-size:13px">
+    <p style="margin:0 0 8px"><strong>현재 (버그):</strong> 서버가 뽑은 번호와 바퀴 애니메이션 번호가 다름</p>
+    <p style="margin:0 0 8px"><strong>수정 방향:</strong></p>
+    <ol style="margin:0;padding-left:20px;opacity:.85">
+      <li>추첨 버튼 클릭 → <strong>서버 API 먼저 호출</strong>하여 당첨 번호 확정</li>
+      <li>확정된 번호를 <code>LotteryWheel</code>에 <code>targetNumber</code> prop으로 전달</li>
+      <li>바퀴가 그 번호로 정확히 랜딩하는 애니메이션 실행</li>
+      <li>로딩 중에는 "추첨 중..." 스피너 표시</li>
+    </ol>
+  </div>
+</div>
+
+<div class="section">
+  <span class="label">섹션 5 · 기타 수정 사항</span>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+    <div style="background:var(--card);border:1px solid var(--card-border);border-radius:8px;padding:12px;font-size:13px">
+      <strong>Ranking 페이지</strong>
+      <ul style="margin:8px 0 0;padding-left:16px;opacity:.8">
+        <li><code>status = 'finished'</code> 팀만 표시</li>
+        <li>진행 중 팀 제외</li>
+      </ul>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--card-border);border-radius:8px;padding:12px;font-size:13px">
+      <strong>Judge 페이지</strong>
+      <ul style="margin:8px 0 0;padding-left:16px;opacity:.8">
+        <li>saveAll() → Promise.all 병렬</li>
+        <li>저장 성공 피드백</li>
+      </ul>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--card-border);border-radius:8px;padding:12px;font-size:13px">
+      <strong>Gateway WS</strong>
+      <ul style="margin:8px 0 0;padding-left:16px;opacity:.8">
+        <li>30초 ping/pong heartbeat</li>
+        <li>클라이언트 지수 백오프 재연결</li>
+      </ul>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--card-border);border-radius:8px;padding:12px;font-size:13px">
+      <strong>전체 리셋</strong>
+      <ul style="margin:8px 0 0;padding-left:16px;opacity:.8">
+        <li>세션 리셋 ↔ 기기 초기화 분리</li>
+        <li>DELETE /api/teams에서 devices 제외</li>
+      </ul>
+    </div>
+  </div>
+</div>
