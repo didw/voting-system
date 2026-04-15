@@ -14,8 +14,8 @@ type Status = "connected" | "warning" | "disconnected";
 
 function getStatus(lastSeenAt: string): Status {
   const elapsed = Date.now() - new Date(lastSeenAt).getTime();
-  if (elapsed < 2 * 60_000) return "connected";
-  if (elapsed < 5 * 60_000) return "warning";
+  if (elapsed < 10 * 60_000) return "connected";
+  if (elapsed < 60 * 60_000) return "warning";
   return "disconnected";
 }
 
