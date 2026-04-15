@@ -12,10 +12,15 @@ export async function ensureDevice(mac: string): Promise<number> {
     "SELECT id FROM devices WHERE mac_address = ?",
     [mac]
   );
-  if (rows.length > 0) return rows[0].id;
+  if (rows.length > 0) {
+    await pool.execute("UPDATE devices SET last_seen_at = NOW() WHERE id = ?", [
+      rows[0].id,
+    ]);
+    return rows[0].id;
+  }
 
   const [result] = await pool.execute<mysql.ResultSetHeader>(
-    "INSERT INTO devices (mac_address) VALUES (?)",
+    "INSERT INTO devices (mac_address, last_seen_at) VALUES (?, NOW())",
     [mac]
   );
   return result.insertId;

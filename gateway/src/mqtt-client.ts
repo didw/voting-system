@@ -40,6 +40,7 @@ async function handleMessage(msg: string) {
     const deviceId = await ensureDevice(mac);
     console.log(`[MQTT] device registered: ${mac} (id=${deviceId})`);
     broadcast("device_registered", { mac, deviceId });
+    broadcast("device_activity", { mac, deviceId, lastSeenAt: new Date().toISOString() });
     return;
   }
 
@@ -52,6 +53,7 @@ async function handleMessage(msg: string) {
     }
     const mac = macMatch[1];
     const deviceId = await ensureDevice(mac);
+    broadcast("device_activity", { mac, deviceId, lastSeenAt: new Date().toISOString() });
 
     const session = await getActiveSession();
     if (!session) {

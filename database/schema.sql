@@ -21,8 +21,13 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS devices (
     id INT AUTO_INCREMENT PRIMARY KEY,
     mac_address VARCHAR(17) NOT NULL UNIQUE COMMENT 'ESP8266 MAC 주소',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '마지막 활동 시각'
 ) COMMENT='투표 기기 등록';
+
+-- 기존 DB 마이그레이션:
+-- ALTER TABLE devices ADD COLUMN last_seen_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '마지막 활동 시각';
+-- UPDATE devices SET last_seen_at = created_at WHERE last_seen_at IS NULL;
 
 -- 개별 투표 기록
 CREATE TABLE IF NOT EXISTS votes (

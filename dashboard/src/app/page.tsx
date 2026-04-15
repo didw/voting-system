@@ -2,6 +2,11 @@ import Link from "next/link";
 
 const pages = [
   {
+    href: "/devices",
+    title: "Devices",
+    desc: "연결된 기기 현황 모니터링",
+  },
+  {
     href: "/voting",
     title: "Voting",
     desc: "팀별 투표 진행 및 실시간 결과 표시",

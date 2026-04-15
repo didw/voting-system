@@ -6,7 +6,7 @@ const char* WIFI_SSID     = "KOCO_2.4G";
 const char* WIFI_PASSWORD  = "13771377";
 
 // MQTT
-const char* MQTT_BROKER   = "koco1377.iptime.org";
+const char* MQTT_BROKER   = "koko-seungnam.iptime.org";
 const int   MQTT_PORT     = 11883;
 const char* MQTT_TOPIC    = "voting/device";
 const char* MQTT_USERNAME = "jyyang";
