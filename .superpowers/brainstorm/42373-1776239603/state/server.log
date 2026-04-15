@@ -16,3 +16,4 @@
 {"source":"user-event","type":"click","text":"B\n    \n      투표 페이지에만 표시 + 배너\n      \n        Voting Page\n        \n          \n            ⚠️ 실시간 연결이 끊겼습니다. 투표 수가 실시간으로 반영되지 않을 수 있습니다.\n          \n          현재 12표\n        \n      \n      투표 중에만 중요한 정보. 다른 페이지에서는 WS 불필요. 구현 단순.","choice":"b","id":null,"timestamp":1776239954018}
 {"type":"screen-added","file":"/home/jyyang/voting-system/.superpowers/brainstorm/42373-1776239603/content/design-overview.html"}
 {"type":"screen-added","file":"/home/jyyang/voting-system/.superpowers/brainstorm/42373-1776239603/content/design-revised.html"}
+{"type":"server-stopped","reason":"idle timeout"}

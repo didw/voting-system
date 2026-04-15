@@ -9,3 +9,11 @@ export async function GET() {
   );
   return NextResponse.json(rows);
 }
+
+// DELETE /api/devices — 기기 목록 전체 초기화
+export async function DELETE() {
+  const [result] = await pool.execute<mysql.ResultSetHeader>(
+    "DELETE FROM devices"
+  );
+  return NextResponse.json({ ok: true, deleted: result.affectedRows });
+}

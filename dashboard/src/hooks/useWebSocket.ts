@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type WSMessage = { type: string; [key: string]: unknown };
 type Handler = (msg: WSMessage) => void;
@@ -8,14 +8,19 @@ type Handler = (msg: WSMessage) => void;
 export function useWebSocket(handler: Handler) {
   const wsRef = useRef<WebSocket | null>(null);
   const handlerRef = useRef(handler);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [connected, setConnected] = useState(false);
-  handlerRef.current = handler;
 
   useEffect(() => {
-    // WS는 HTTP와 동일한 포트(3000)로 연결 — 서버에서 gateway(8080)로 프록시됨
+    handlerRef.current = handler;
+  }, [handler]);
+
+  useEffect(() => {
+    // WS는 HTTP와 동일한 포트(3000)의 /ws로 연결 — 서버에서 gateway(8080)로 프록시됨
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const host = window.location.host; // hostname:port 포함
-    const url = `${protocol}//${host}`;
+    const url = `${protocol}//${host}/ws`;
+    let shouldReconnect = true;
 
     function connect() {
       const ws = new WebSocket(url);
@@ -24,8 +29,11 @@ export function useWebSocket(handler: Handler) {
       ws.onopen = () => setConnected(true);
       ws.onclose = () => {
         setConnected(false);
-        setTimeout(connect, 2000);
+        if (shouldReconnect) {
+          reconnectTimerRef.current = setTimeout(connect, 2000);
+        }
       };
+      ws.onerror = () => ws.close();
       ws.onmessage = (e) => {
         try {
           const msg = JSON.parse(e.data);
@@ -36,6 +44,10 @@ export function useWebSocket(handler: Handler) {
 
     connect();
     return () => {
+      shouldReconnect = false;
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
       wsRef.current?.close();
     };
   }, []);

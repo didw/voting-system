@@ -26,19 +26,30 @@ const app = next({ dev });
 const handle = app.getRequestHandler();
 
 app.prepare().then(() => {
+  const handleUpgrade = app.getUpgradeHandler();
   const server = createServer((req, res) => {
     const parsedUrl = parse(req.url ?? "/", true);
     handle(req, res, parsedUrl);
   });
 
-  // WebSocket 업그레이드 요청 → gateway WS 서버로 프록시
+  // 앱 실시간 이벤트만 gateway WS 서버로 프록시한다.
+  // Next dev/HMR WebSocket까지 넘기면 gateway가 Next 전용 프레임을 받고 종료될 수 있다.
   server.on("upgrade", (req, socket, head) => {
-    proxy.ws(req, socket, head, { target: `ws://localhost:${wsPort}` });
+    const pathname = parse(req.url ?? "/").pathname;
+    if (pathname === "/ws") {
+      proxy.ws(req, socket, head, { target: `ws://localhost:${wsPort}` });
+      return;
+    }
+
+    handleUpgrade(req, socket, head).catch((err: Error) => {
+      console.error("[Next Upgrade]", err.message);
+      socket.destroy();
+    });
   });
 
   server.listen(port, "0.0.0.0", () => {
     console.log(`> Ready on http://0.0.0.0:${port}`);
-    console.log(`> WebSocket proxied to ws://localhost:${wsPort}`);
+    console.log(`> App WebSocket proxied from /ws to ws://localhost:${wsPort}`);
   });
 }).catch((err: Error) => {
   console.error("Failed to start server:", err);

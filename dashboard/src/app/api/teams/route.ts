@@ -67,11 +67,12 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-// DELETE /api/teams - 전체 리셋
+// DELETE /api/teams - 전체 팀/점수/투표 리셋
 export async function DELETE() {
   await pool.execute("DELETE FROM votes");
   await pool.execute("DELETE FROM results");
-  await pool.execute("DELETE FROM sessions");
-  await pool.execute("DELETE FROM devices");
-  return NextResponse.json({ ok: true });
+  const [result] = await pool.execute<mysql.ResultSetHeader>(
+    "DELETE FROM sessions"
+  );
+  return NextResponse.json({ ok: true, deleted: result.affectedRows });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useWebSocket } from "@/hooks/useWebSocket";
 
 interface Device {
@@ -48,24 +48,59 @@ const statusConfig: Record<Status, { dot: string; label: string; bg: string }> =
 export default function DevicesPage() {
   const [devices, setDevices] = useState<Device[]>([]);
   const [, setTick] = useState(0);
-  const devicesRef = useRef(devices);
-  devicesRef.current = devices;
+  const [deleting, setDeleting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // 초기 로드 + 60초 폴링
   const fetchDevices = useCallback(async () => {
     try {
       const res = await fetch("/api/devices");
-      const data: Device[] = await res.json();
-      setDevices(data);
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "기기 목록을 불러오지 못했습니다.");
+      }
+      setDevices(data as Device[]);
+      setError(null);
     } catch (err) {
       console.error("Failed to fetch devices:", err);
+      setError(err instanceof Error ? err.message : "기기 목록을 불러오지 못했습니다.");
     }
   }, []);
 
+  async function resetDevices() {
+    if (deleting) return;
+    if (!confirm("모든 기기를 삭제하시겠습니까? 관련 투표 기록도 함께 삭제됩니다.")) {
+      return;
+    }
+
+    setDeleting(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const res = await fetch("/api/devices", { method: "DELETE" });
+      const data: Device[] = await res.json();
+      if (!res.ok) {
+        throw new Error(
+          (data as { error?: string }).error ?? "기기를 초기화하지 못했습니다."
+        );
+      }
+      setDevices([]);
+      setMessage("기기 목록을 초기화했습니다.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "기기를 초기화하지 못했습니다.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   useEffect(() => {
-    fetchDevices();
+    const initial = setTimeout(fetchDevices, 0);
     const poll = setInterval(fetchDevices, 60_000);
-    return () => clearInterval(poll);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(poll);
+    };
   }, [fetchDevices]);
 
   // 30초마다 경과 시간 재계산
@@ -116,7 +151,29 @@ export default function DevicesPage() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
-      <h1 className="mb-6 text-3xl font-bold">Device Monitor</h1>
+      <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-3xl font-bold">Device Monitor</h1>
+        <button
+          type="button"
+          onClick={resetDevices}
+          disabled={deleting || devices.length === 0}
+          className="rounded-lg border border-[var(--danger)] px-4 py-2 text-sm font-medium text-[var(--danger)] transition-colors hover:bg-[var(--danger)] hover:text-white disabled:opacity-30"
+        >
+          {deleting ? "초기화 중..." : "기기 초기화"}
+        </button>
+      </div>
+
+      {error && (
+        <p className="mb-4 rounded-lg border border-[var(--danger)] px-4 py-3 text-sm text-[var(--danger)]">
+          {error}
+        </p>
+      )}
+
+      {message && (
+        <p className="mb-4 rounded-lg border border-green-500 px-4 py-3 text-sm text-green-500">
+          {message}
+        </p>
+      )}
 
       {/* 요약 카드 */}
       <div className="mb-6 grid grid-cols-3 gap-4">

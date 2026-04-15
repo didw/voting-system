@@ -12,9 +12,12 @@ export default function ScoreDisplay({ score, animate = false }: ScoreDisplayPro
 
   useEffect(() => {
     if (!animate) return;
-    setVisible(false);
-    const id = setTimeout(() => setVisible(true), 100);
-    return () => clearTimeout(id);
+    const hideId = setTimeout(() => setVisible(false), 0);
+    const showId = setTimeout(() => setVisible(true), 100);
+    return () => {
+      clearTimeout(hideId);
+      clearTimeout(showId);
+    };
   }, [score, animate]);
 
   return (

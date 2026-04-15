@@ -9,6 +9,7 @@ export function startWSServer() {
 
   wss.on("connection", (ws) => {
     console.log("[WS] client connected");
+    ws.on("error", (err) => console.warn("[WS] client error:", err.message));
     ws.on("close", () => console.log("[WS] client disconnected"));
   });
 }

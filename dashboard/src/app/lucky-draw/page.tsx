@@ -10,13 +10,23 @@ export default function LuckyDrawPage() {
   const [drawnNumbers, setDrawnNumbers] = useState<number[]>([]);
   const [lastDrawn, setLastDrawn] = useState<number | null>(null);
   const [spinKey, setSpinKey] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   // 기존 추첨 이력 로드
   useEffect(() => {
     fetch("/api/lottery")
-      .then((r) => r.json())
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) {
+          throw new Error(data.error ?? "추첨 이력을 불러오지 못했습니다.");
+        }
+        return data as { number: number }[];
+      })
       .then((data: { number: number }[]) => {
         setDrawnNumbers(data.map((d) => d.number));
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "추첨 이력을 불러오지 못했습니다.");
       });
   }, []);
 
@@ -30,6 +40,8 @@ export default function LuckyDrawPage() {
   }
 
   async function startDraw() {
+    if (drawing || available.length === 0) return;
+    setError(null);
     setDrawing(true);
     setLastDrawn(null);
     setSpinKey((k) => k + 1);
@@ -37,25 +49,39 @@ export default function LuckyDrawPage() {
 
   const handleResult = useCallback(
     async (number: number) => {
-      // 서버에 저장
-      const res = await fetch("/api/lottery", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ min, max }),
-      });
-      const data = await res.json();
-      const actual = data.number ?? number;
+      try {
+        // 서버에 저장
+        const res = await fetch("/api/lottery", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ min, max }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error ?? "추첨 결과를 저장하지 못했습니다.");
+        }
+        const actual = data.number ?? number;
 
-      setLastDrawn(actual);
-      setDrawnNumbers((prev) => [actual, ...prev]);
-      setDrawing(false);
+        setLastDrawn(actual);
+        setDrawnNumbers((prev) => [actual, ...prev]);
+        setDrawing(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "추첨 결과를 저장하지 못했습니다.");
+        setDrawing(false);
+      }
     },
     [min, max]
   );
 
   async function resetAll() {
     if (!confirm("모든 추첨 기록을 삭제하시겠습니까?")) return;
-    await fetch("/api/lottery", { method: "DELETE" });
+    setError(null);
+    const res = await fetch("/api/lottery", { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok) {
+      setError(data.error ?? "추첨 기록을 삭제하지 못했습니다.");
+      return;
+    }
     setDrawnNumbers([]);
     setLastDrawn(null);
   }
@@ -87,6 +113,12 @@ export default function LuckyDrawPage() {
         </span>
       </div>
 
+      {error && (
+        <p className="mx-auto mb-6 max-w-md rounded-lg border border-[var(--danger)] px-4 py-3 text-center text-sm text-[var(--danger)]">
+          {error}
+        </p>
+      )}
+
       {/* 추첨 애니메이션 */}
       {drawing && (
         <LotteryWheel
@@ -114,6 +146,7 @@ export default function LuckyDrawPage() {
       {/* 버튼 */}
       <div className="flex justify-center gap-4 mb-12">
         <button
+          type="button"
           onClick={startDraw}
           disabled={drawing || available.length === 0}
           className="rounded-lg bg-[var(--accent)] px-8 py-3 text-lg font-semibold text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-30"
@@ -121,6 +154,7 @@ export default function LuckyDrawPage() {
           {available.length === 0 ? "추첨 완료" : "추첨하기"}
         </button>
         <button
+          type="button"
           onClick={resetAll}
           disabled={drawing}
           className="rounded-lg border border-[var(--danger)] px-6 py-3 text-lg text-[var(--danger)] transition-colors hover:bg-[var(--danger)] hover:text-white disabled:opacity-30"

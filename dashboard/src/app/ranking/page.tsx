@@ -18,14 +18,26 @@ export default function RankingPage() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [revealed, setRevealed] = useState<Record<number, string>>({});
   const [revealing, setRevealing] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/teams")
-      .then((r) => r.json())
-      .then((data: Team[]) => {
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) {
+          throw new Error(data.error ?? "순위를 불러오지 못했습니다.");
+        }
+        return data as Team[];
+      })
+      .then((data) => {
         const sorted = [...data].sort((a, b) => b.total_score - a.total_score);
         setTeams(sorted);
-      });
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "순위를 불러오지 못했습니다.");
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   function revealPosition(position: number) {
@@ -76,6 +88,7 @@ export default function RankingPage() {
         <div className="flex gap-4">
           {[1, 2, 3].map((pos) => (
             <button
+              type="button"
               key={pos}
               onClick={() => revealPosition(pos)}
               disabled={
@@ -89,7 +102,17 @@ export default function RankingPage() {
         </div>
       )}
 
-      {teams.length === 0 && (
+      {loading && (
+        <p className="text-[var(--foreground)]/60">순위를 불러오는 중입니다.</p>
+      )}
+
+      {error && (
+        <p className="rounded-lg border border-[var(--danger)] px-4 py-3 text-sm text-[var(--danger)]">
+          {error}
+        </p>
+      )}
+
+      {!loading && !error && teams.length === 0 && (
         <p className="text-[var(--foreground)]/60">
           투표 결과가 없습니다. 투표를 먼저 진행하세요.
         </p>

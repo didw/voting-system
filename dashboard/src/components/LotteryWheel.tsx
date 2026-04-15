@@ -15,7 +15,6 @@ export default function LotteryWheel({ numbers, onResult }: Props) {
   useEffect(() => {
     if (numbers.length === 0) return;
     cancelledRef.current = false;
-    setPhase("spin");
 
     let idx = Math.floor(Math.random() * numbers.length);
     const totalFrames = 30;

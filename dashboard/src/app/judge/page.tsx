@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 interface TeamRow {
   session_id: number;
@@ -13,57 +13,136 @@ export default function JudgePage() {
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [scores, setScores] = useState<Record<number, string>>({});
   const [saving, setSaving] = useState<number | null>(null);
+  const [savingAll, setSavingAll] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
 
-  async function loadTeams() {
-    const res = await fetch("/api/judge");
-    const data: TeamRow[] = await res.json();
-    setTeams(data);
-    const init: Record<number, string> = {};
-    for (const t of data) {
-      init[t.session_id] = String(t.judge_score);
+  const loadTeams = useCallback(async () => {
+    try {
+      const res = await fetch("/api/judge");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "팀 목록을 불러오지 못했습니다.");
+      }
+      setTeams(data);
+      const init: Record<number, string> = {};
+      for (const t of data as TeamRow[]) {
+        init[t.session_id] = String(t.judge_score);
+      }
+      setScores(init);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "팀 목록을 불러오지 못했습니다.");
     }
-    setScores(init);
-  }
+  }, []);
 
   useEffect(() => {
     loadTeams();
-  }, []);
+  }, [loadTeams]);
 
   async function saveScore(sessionId: number) {
+    if (resetting) return;
+
     const val = Number(scores[sessionId] ?? 0);
     setSaving(sessionId);
-    await fetch("/api/judge", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sessionId, judgeScore: val }),
-    });
-    setSaving(null);
-    loadTeams();
+    setMessage(null);
+    try {
+      const res = await fetch("/api/judge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId, judgeScore: val }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "점수를 저장하지 못했습니다.");
+      }
+      setMessage("저장했습니다.");
+      loadTeams();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "점수를 저장하지 못했습니다.");
+    } finally {
+      setSaving(null);
+    }
   }
 
   async function saveAll() {
-    for (const t of teams) {
-      const val = Number(scores[t.session_id] ?? 0);
-      await fetch("/api/judge", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: t.session_id, judgeScore: val }),
-      });
+    if (savingAll || resetting) return;
+
+    setSavingAll(true);
+    setMessage(null);
+    try {
+      for (const t of teams) {
+        const val = Number(scores[t.session_id] ?? 0);
+        const res = await fetch("/api/judge", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: t.session_id, judgeScore: val }),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error ?? "점수를 저장하지 못했습니다.");
+        }
+      }
+      setMessage("전체 저장했습니다.");
+      loadTeams();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "점수를 저장하지 못했습니다.");
+    } finally {
+      setSavingAll(false);
     }
-    loadTeams();
+  }
+
+  async function resetTeams() {
+    if (resetting) return;
+    if (!confirm("모든 팀과 관련 점수, 투표 기록을 삭제하시겠습니까?")) {
+      return;
+    }
+
+    setResetting(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/teams", { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "팀을 초기화하지 못했습니다.");
+      }
+      setTeams([]);
+      setScores({});
+      setMessage("모든 팀을 삭제했습니다.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "팀을 초기화하지 못했습니다.");
+    } finally {
+      setResetting(false);
+    }
   }
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-12">
-      <div className="flex items-center justify-between mb-8">
+      <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">심사위원 점수 입력</h1>
-        <button
-          onClick={saveAll}
-          className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-hover)]"
-        >
-          전체 저장
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={saveAll}
+            disabled={savingAll || resetting || teams.length === 0}
+            className="rounded-lg bg-[var(--accent)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-40"
+          >
+            {savingAll ? "저장 중..." : "전체 저장"}
+          </button>
+          <button
+            type="button"
+            onClick={resetTeams}
+            disabled={resetting || savingAll || teams.length === 0}
+            className="rounded-lg border border-[var(--danger)] px-4 py-2 text-sm font-semibold text-[var(--danger)] transition-colors hover:bg-[var(--danger)] hover:text-white disabled:opacity-40"
+          >
+            {resetting ? "초기화 중..." : "팀 초기화"}
+          </button>
+        </div>
       </div>
+      {message && (
+        <p className="mb-4 rounded-lg border border-[var(--card-border)] px-4 py-3 text-sm">
+          {message}
+        </p>
+      )}
 
       {teams.length === 0 ? (
         <p className="text-center text-[var(--foreground)]/60 py-12">
@@ -112,8 +191,9 @@ export default function JudgePage() {
                   </td>
                   <td className="px-4 py-3 text-center">
                     <button
+                      type="button"
                       onClick={() => saveScore(t.session_id)}
-                      disabled={saving === t.session_id}
+                      disabled={saving === t.session_id || resetting}
                       className="rounded bg-[var(--card)] px-3 py-1 text-sm transition-colors hover:bg-[var(--accent)] hover:text-white disabled:opacity-40"
                     >
                       {saving === t.session_id ? "..." : "저장"}

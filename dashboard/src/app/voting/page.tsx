@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Timer from "@/components/Timer";
 import ScoreDisplay from "@/components/ScoreDisplay";
 import { useWebSocket } from "@/hooks/useWebSocket";
@@ -13,9 +13,11 @@ export default function VotingPage() {
   const [timerSeconds, setTimerSeconds] = useState(10);
   const [sessionId, setSessionId] = useState<number | null>(null);
   const [voteCount, setVoteCount] = useState(0);
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // WebSocket으로 실시간 투표 수 수신
-  useWebSocket(
+  const { connected } = useWebSocket(
     useCallback(
       (msg) => {
         if (
@@ -30,18 +32,45 @@ export default function VotingPage() {
     )
   );
 
-  async function startVoting() {
-    if (!teamName.trim()) return;
+  useEffect(() => {
+    if (phase !== "voting" || sessionId == null || connected) return;
 
-    const res = await fetch("/api/teams", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ teamName: teamName.trim(), timerSeconds }),
-    });
-    const data = await res.json();
-    setSessionId(data.id);
-    setVoteCount(0);
-    setPhase("voting");
+    async function refreshVoteCount() {
+      const res = await fetch(`/api/votes?sessionId=${sessionId}`);
+      const data = await res.json();
+      if (res.ok) {
+        setVoteCount(data.count);
+      }
+    }
+
+    refreshVoteCount();
+    const id = setInterval(refreshVoteCount, 5000);
+    return () => clearInterval(id);
+  }, [phase, sessionId, connected]);
+
+  async function startVoting() {
+    if (!teamName.trim() || starting) return;
+
+    setStarting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/teams", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ teamName: teamName.trim(), timerSeconds }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error ?? "투표를 시작하지 못했습니다.");
+      }
+      setSessionId(data.id);
+      setVoteCount(0);
+      setPhase("voting");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "투표를 시작하지 못했습니다.");
+    } finally {
+      setStarting(false);
+    }
   }
 
   const finishVoting = useCallback(async () => {
@@ -91,18 +120,29 @@ export default function VotingPage() {
               className="flex-1 rounded-lg border border-[var(--card-border)] bg-[var(--card)] px-4 py-2 outline-none focus:border-[var(--accent)]"
             />
           </div>
+          {error && (
+            <p className="rounded-lg border border-[var(--danger)] px-4 py-3 text-sm text-[var(--danger)]">
+              {error}
+            </p>
+          )}
           <button
+            type="button"
             onClick={startVoting}
-            disabled={!teamName.trim()}
+            disabled={!teamName.trim() || starting}
             className="rounded-lg bg-[var(--accent)] px-6 py-3 text-lg font-semibold text-white transition-colors hover:bg-[var(--accent-hover)] disabled:opacity-40"
           >
-            투표 시작
+            {starting ? "시작 중..." : "투표 시작"}
           </button>
         </div>
       )}
 
       {phase === "voting" && (
-        <div className="flex flex-col items-center gap-8">
+        <div className="relative flex flex-col items-center gap-8">
+          {!connected && (
+            <span className="absolute right-0 top-0 rounded border border-[var(--danger)] px-2 py-1 text-xs text-[var(--danger)]">
+              연결 끊김
+            </span>
+          )}
           <h2 className="text-2xl font-semibold">{teamName}</h2>
           <Timer
             seconds={timerSeconds}
@@ -120,6 +160,7 @@ export default function VotingPage() {
           <h2 className="text-2xl font-semibold">{teamName}</h2>
           <ScoreDisplay score={voteCount} animate />
           <button
+            type="button"
             onClick={reset}
             className="rounded-lg border border-[var(--card-border)] px-6 py-3 text-lg transition-colors hover:border-[var(--accent)]"
           >

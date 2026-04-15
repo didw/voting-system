@@ -35,8 +35,13 @@ export async function POST(req: NextRequest) {
 
   try {
     await pool.execute("INSERT INTO lottery (number) VALUES (?)", [number]);
-  } catch (err: any) {
-    if (err.code === "ER_DUP_ENTRY") {
+  } catch (err: unknown) {
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      err.code === "ER_DUP_ENTRY"
+    ) {
       return NextResponse.json({ error: "중복 번호" }, { status: 409 });
     }
     throw err;

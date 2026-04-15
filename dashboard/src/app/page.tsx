@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 const pages = [
   {
     href: "/devices",
@@ -37,14 +35,14 @@ export default function HomePage() {
       </p>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         {pages.map((p) => (
-          <Link
+          <a
             key={p.href}
             href={p.href}
             className="block rounded-lg border border-[var(--card-border)] bg-[var(--card)] p-6 transition-colors hover:border-[var(--accent)]"
           >
             <h2 className="mb-1 text-xl font-semibold">{p.title}</h2>
             <p className="text-sm text-[var(--foreground)]/60">{p.desc}</p>
-          </Link>
+          </a>
         ))}
       </div>
     </div>
