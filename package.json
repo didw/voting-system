@@ -1,0 +1,18 @@
+{
+  "name": "voting-system",
+  "private": true,
+  "workspaces": [
+    "gateway",
+    "dashboard"
+  ],
+  "scripts": {
+    "dev:gateway": "npm run dev --workspace=gateway",
+    "dev:dashboard": "npm run dev --workspace=dashboard",
+    "build:gateway": "npm run build --workspace=gateway",
+    "build:dashboard": "npm run build --workspace=dashboard",
+    "dev": "concurrently \"npm:dev:gateway\" \"npm:dev:dashboard\""
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

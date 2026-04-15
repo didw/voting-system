@@ -2,57 +2,53 @@
 #define MQTT_HANDLER_H
 
 #include <PubSubClient.h>
-#include <WiFiClient.h>
+#include <ESP8266WiFi.h>
+#include "config.h"
 
 class MqttHandler {
 private:
     WiFiClient espClient;
     PubSubClient client;
-    String clientIdStr; // Use String for easier manipulation
-    const char* username = "jyyang"; // MQTT username
-    const char* password = "didwhdduf"; // MQTT password
+    String clientId;
 
 public:
-    MqttHandler(const char* brokerIp, int brokerPort) : client(espClient) {
-        clientIdStr = WiFi.macAddress();
-        // Strip the clientId if necessary, e.g., remove colons or whitespace
-        // Example: clientIdStr.replace(":", "");
-        client.setServer(brokerIp, brokerPort);
+    MqttHandler() : client(espClient) {
+        client.setServer(MQTT_BROKER, MQTT_PORT);
     }
 
     void setup() {
-        const char* clientId = clientIdStr.c_str(); // Convert to const char* for PubSubClient
-        while (!client.connected()) {
-            Serial.print("Attempting MQTT connection...");
-            // Use the clientId in the connect call with username and password
-            if (client.connect(clientId, username, password)) {
-                Serial.println("connected");
-                
-                // MQTT 연결 성공 시 수행할 작업
-                String connectMessage = clientIdStr + " Connected"; // Use String directly
-                client.publish("buttonTopic", connectMessage.c_str()); // Convert to const char* for publish
-                
-                // 클라이언트 ID를 사용하여 구독
-                client.subscribe(clientId); // Use const char* clientId
+        clientId = WiFi.macAddress();
+        reconnect();
+    }
 
+    void reconnect() {
+        while (!client.connected()) {
+            Serial.print("MQTT connecting...");
+            if (client.connect(clientId.c_str(), MQTT_USERNAME, MQTT_PASSWORD)) {
+                Serial.println("connected");
             } else {
-                Serial.print("failed, rc=");
+                Serial.print("failed (rc=");
                 Serial.print(client.state());
-                Serial.println(" try again in 5 seconds");
-                delay(5000);
+                Serial.println(") retry in 3s");
+                delay(3000);
             }
         }
     }
 
     void publish(const char* topic, const char* message) {
-        if (client.connected()) {
-            client.publish(topic, message);
+        if (!client.connected()) {
+            reconnect();
         }
+        client.publish(topic, message);
+    }
+
+    bool isConnected() {
+        return client.connected();
     }
 
     void loop() {
         if (!client.connected()) {
-            setup(); // 연결이 끊어진 경우 재연결 시도
+            reconnect();
         }
         client.loop();
     }

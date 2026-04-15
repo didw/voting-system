@@ -1,41 +1,54 @@
 -- database/schema.sql
+-- Voting System Schema for MariaDB
 
--- 디바이스 정보 테이블
+CREATE DATABASE IF NOT EXISTS votedb
+  DEFAULT CHARACTER SET utf8mb4
+  DEFAULT COLLATE utf8mb4_unicode_ci;
+
+USE votedb;
+
+-- 투표 세션 (경연 라운드 단위)
+CREATE TABLE IF NOT EXISTS sessions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    team_name VARCHAR(255) NOT NULL COMMENT '팀/참가자 이름',
+    timer_seconds INT NOT NULL DEFAULT 10 COMMENT '투표 제한 시간(초)',
+    status ENUM('waiting', 'voting', 'finished') NOT NULL DEFAULT 'waiting',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    finished_at TIMESTAMP NULL
+) COMMENT='투표 세션 (경연 라운드)';
+
+-- 등록된 디바이스
 CREATE TABLE IF NOT EXISTS devices (
-    id INT AUTO_INCREMENT PRIMARY KEY COMMENT '디바이스 고유 ID',
-    mac_address VARCHAR(17) UNIQUE COMMENT '디바이스 MAC 주소 (중복 불가)',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '등록 시간'
-);
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    mac_address VARCHAR(17) NOT NULL UNIQUE COMMENT 'ESP8266 MAC 주소',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) COMMENT='투표 기기 등록';
 
--- 투표 기록 테이블
+-- 개별 투표 기록
 CREATE TABLE IF NOT EXISTS votes (
-    id INT AUTO_INCREMENT PRIMARY KEY COMMENT '투표 기록 고유 ID',
-    device_id INT COMMENT '투표한 디바이스 ID (devices.id 참조)',
-    candidate_id INT COMMENT '투표 대상 후보 ID',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '투표 시간',
-    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE SET NULL ON UPDATE CASCADE
-    -- 필요시 후보 테이블을 만들고 candidate_id에 대한 외래 키 추가 가능
-    -- FOREIGN KEY (candidate_id) REFERENCES candidates(id)
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id INT NOT NULL,
+    device_id INT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE,
+    FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE,
+    UNIQUE KEY uq_session_device (session_id, device_id) COMMENT '세션당 기기당 1표'
 ) COMMENT='개별 투표 기록';
 
--- (관객) 투표 결과 집계 테이블
-CREATE TABLE IF NOT EXISTS vote_results (
-    name VARCHAR(255) PRIMARY KEY COMMENT '팀 또는 참가자 이름 (고유 식별자)',
-    score INT DEFAULT 0 COMMENT '획득한 투표 점수',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '마지막 업데이트 시간'
-) COMMENT='팀/참가자별 최종 투표 점수';
+-- 팀별 최종 결과 (투표 점수 + 심사 점수)
+CREATE TABLE IF NOT EXISTS results (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id INT NOT NULL UNIQUE,
+    vote_score INT NOT NULL DEFAULT 0 COMMENT '관객 투표 점수',
+    judge_score INT NOT NULL DEFAULT 0 COMMENT '심사위원 점수',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+) COMMENT='팀별 최종 결과';
 
--- 심사 결과 집계 테이블
-CREATE TABLE IF NOT EXISTS judge_results (
-    name VARCHAR(255) PRIMARY KEY COMMENT '팀 또는 참가자 이름 (vote_results.name 참조)',
-    score INT DEFAULT 0 COMMENT '획득한 심사 점수',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '마지막 업데이트 시간',
-    FOREIGN KEY (name) REFERENCES vote_results(name) ON DELETE CASCADE ON UPDATE CASCADE
-) COMMENT='팀/참가자별 최종 심사 점수';
-
--- 추첨 번호 기록 테이블
+-- 추첨 기록
 CREATE TABLE IF NOT EXISTS lottery (
-    id INT AUTO_INCREMENT PRIMARY KEY COMMENT '추첨 기록 고유 ID',
-    number INT UNIQUE NOT NULL COMMENT '추첨된 번호 (중복 불가)',
-    drawn_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '추첨 시간'
-) COMMENT='로터리 추첨 번호 기록';
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    number INT NOT NULL UNIQUE COMMENT '추첨된 번호',
+    drawn_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) COMMENT='행운권 추첨 기록';

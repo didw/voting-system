@@ -1,4 +1,0 @@
-streamlit
-paho-mqtt
-pymysql
-pandas
